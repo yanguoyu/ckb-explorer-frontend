@@ -16,6 +16,10 @@ export const ONE_HOUR_SECOND = 60 * 60
 export const ONE_MINUTE_SECOND = 60
 export const IS_MAINTAINING = process.env.REACT_APP_IS_MAINTAINING === 'true'
 
+/* eslint-disable */
+console.info({ IS_MAINTAINING })
+console.info({ env: process.env })
+
 export function getPrimaryColor() {
   return isMainnet() ? '#00CC9B' : '#9A2CEC'
 }
