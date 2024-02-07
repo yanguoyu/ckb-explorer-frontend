@@ -1,3 +1,5 @@
+import { OutPoint, Script } from '../Script'
+
 export interface SUDT {
   symbol: string
   decimal: string
@@ -57,6 +59,17 @@ export interface OmigaInscription {
   typeHash: string
   udtAmount: string
   udtType: 'omiga_inscription'
+}
+
+export interface LiveCell {
+  outpoint: OutPoint
+  amount: string
+  capacity: string
+  time: string
+  block: string
+  type: Script
+  cellType: string
+  uan?: string
 }
 
 export type UDTAccount = SUDT | MNFT | NRC721 | CoTA | Spore | OmigaInscription

@@ -103,6 +103,27 @@ export const Address = () => {
   const deprecatedAddr = useDeprecatedAddr(address)
   const counterpartAddr = newAddr === address ? deprecatedAddr : newAddr
 
+  const liveCellFetcher = async (page: number, size: number, order: string) => {
+    const { data, pageSize, total } = await explorerService.api.fetchAddressLiveCells(address, page, size, order)
+    return {
+      liveCells: data.map(cell => ({
+        outpoint: {
+          txHash: cell.txHash,
+          index: cell.cellIndex.toString(16),
+        },
+        capacity: cell.capacity,
+        amount: cell.extraInfo?.amount ?? '0',
+        block: cell.blockNumber,
+        time: cell.blockTimestamp,
+        cellType: cell.cellType,
+        type: cell.typeScript,
+        uan: cell.extraInfo?.uan ?? cell.extraInfo?.displayName ?? cell.extraInfo?.symbol,
+      })),
+      pageSize,
+      total,
+    }
+  }
+
   return (
     <Content>
       <AddressContentPanel className="container">
@@ -134,7 +155,7 @@ export const Address = () => {
         </Card>
 
         <QueryResult query={addressInfoQuery} delayLoading>
-          {data => (data ? <AddressOverviewCard address={data} /> : <div />)}
+          {data => (data ? <AddressOverviewCard address={data} liveCellFetcher={liveCellFetcher} /> : <div />)}
         </QueryResult>
 
         <QueryResult query={addressTransactionsQuery} delayLoading>

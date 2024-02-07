@@ -1,5 +1,5 @@
 import styled from 'styled-components'
-import { Tabs } from 'antd'
+import { Table, Tabs } from 'antd'
 import TabPane from 'antd/lib/tabs/TabPane'
 import SimpleButton from '../../components/SimpleButton'
 import { TransactionPanel } from '../../components/TransactionItem/styled'
@@ -144,12 +144,60 @@ export const AddressAssetsTab = styled(Tabs)`
 
 export const AddressAssetsTabPane = styled(TabPane)``
 
+export const AddressAssetsDescription = styled.div`
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+`
+
 export const AddressAssetsTabPaneTitle = styled.span`
   font-size: 16px;
   font-weight: 500;
   line-height: 19px;
   letter-spacing: 0;
   text-align: left;
+`
+
+export const LiveCellTable = styled(Table)`
+  background: white;
+  width: 100%;
+  border-radius: 6px;
+`
+
+export const Sort = styled.div`
+  display: flex;
+  align-items: center;
+
+  svg {
+    cursor: pointer;
+  }
+`
+
+export const AddressUDTAssetsList = styled.div`
+  overflow-y: scroll;
+  width: 100%;
+  display: flex;
+  gap: 16px;
+  background-color: #f1f1f1;
+  flex-flow: row wrap;
+
+  @media (min-width: ${variables.extraLargeBreakPoint}) {
+    max-height: 153px;
+  }
+
+  @media (max-width: ${variables.extraLargeBreakPoint}) {
+    max-height: 252px;
+  }
+`
+
+export const AddressUDTAssetsContent = styled.div`
+  background-color: #f1f1f1;
+  padding: 16px 25px;
+  width: 100%;
+  display: flex;
+  gap: 16px;
+  flex-flow: row wrap;
+  max-height: 400px;
 `
 
 export const AddressUDTAssetsPanel = styled.div`
@@ -159,26 +207,9 @@ export const AddressUDTAssetsPanel = styled.div`
 
   > span {
     font-size: 14px;
+    font-family: Roboto, inherit, sans-serif;
     font-weight: 600;
     color: #000;
-  }
-
-  .addressUdtAssetsGrid {
-    margin-top: 10px;
-    background-color: #f1f1f1;
-    padding: 6px 25px;
-    width: 100%;
-    display: flex;
-    flex-flow: row wrap;
-    overflow-y: scroll;
-
-    @media (min-width: ${variables.extraLargeBreakPoint}) {
-      max-height: 220px;
-    }
-
-    @media (max-width: ${variables.extraLargeBreakPoint}) {
-      max-height: 310px;
-    }
   }
 
   @media (max-width: ${variables.mobileBreakPoint}) {
@@ -190,7 +221,6 @@ export const AddressUDTAssetsPanel = styled.div`
 export const AddressUDTItemPanel = styled.a`
   display: flex;
   flex-direction: column;
-  margin: 6px 15px;
   background: #fff;
   width: 260px;
   border-radius: 4px;

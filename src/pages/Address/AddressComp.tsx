@@ -8,18 +8,25 @@ import { explorerService } from '../../services/ExplorerService'
 import { localeNumberString } from '../../utils/number'
 import { shannonToCkb, deprecatedAddrToNewAddr } from '../../utils/util'
 import {
+  AddressAssetsDescription,
   AddressAssetsTab,
   AddressAssetsTabPane,
   AddressAssetsTabPaneTitle,
   AddressLockScriptController,
   AddressLockScriptPanel,
   AddressTransactionsPanel,
+  AddressUDTAssetsContent,
+  AddressUDTAssetsList,
   AddressUDTAssetsPanel,
+  Sort,
 } from './styled'
 import Capacity from '../../components/Capacity'
 import CKBTokenIcon from './ckb_token_icon.png'
 import { ReactComponent as TimeDownIcon } from './time_down.svg'
 import { ReactComponent as TimeUpIcon } from './time_up.svg'
+import { ReactComponent as AmountSortIcon } from './amount_sort.svg'
+import { ReactComponent as CellTableIcon } from './cell_table.svg'
+import { ReactComponent as CellGridIcon } from './cell_grid.svg'
 import {
   OrderByType,
   useIsMobile,
@@ -43,7 +50,7 @@ import { omit } from '../../utils/object'
 import { CsvExport } from '../../components/CsvExport'
 import PaginationWithRear from '../../components/PaginationWithRear'
 import { Transaction } from '../../models/Transaction'
-import { Address, UDTAccount } from '../../models/Address'
+import { Address, LiveCell, UDTAccount } from '../../models/Address'
 import { Card, CardCellInfo, CardCellsLayout } from '../../components/Card'
 import { CardHeader } from '../../components/Card/CardHeader'
 import {
@@ -52,11 +59,14 @@ import {
   AddressMNFTComp,
   AddressSporeComp,
   AddressSudtComp,
+  AddressLiveCellComp,
+  AddressLiveCellTableComp,
 } from './AddressAssetComp'
 
 enum AssetInfo {
   UDT = 1,
   INSCRIPTION,
+  LIVE_CELL,
 }
 
 const lockScriptIcon = (show: boolean) => {
@@ -120,10 +130,24 @@ const AddressLockScript: FC<{ address: Address }> = ({ address }) => {
   )
 }
 
-export const AddressOverviewCard: FC<{ address: Address }> = ({ address }) => {
+export const AddressOverviewCard: FC<{
+  address: Address
+  liveCellFetcher: (
+    page: number,
+    size: number,
+    sort: string,
+  ) => Promise<{ pageSize: number; total: number; liveCells: LiveCell[] }>
+}> = ({ address, liveCellFetcher }) => {
   const { t, i18n } = useTranslation()
   const { udtAccounts = [] } = address
   const [activeTab, setActiveTab] = useState<AssetInfo>(AssetInfo.UDT)
+  const [liveCells, setLiveCells] = useState<LiveCell[]>([])
+  const [liveCellPage, setLiveCellPage] = useState(1)
+  const [totalLiveCell, setTotalLiveCell] = useState(0)
+  const [timeOrderBy, setTimeOrderBy] = useState<OrderByType>('desc')
+  const [liveCellCapacityOrderBy, setLiveCellCapacityOrderBy] = useState<OrderByType>('desc')
+  const [liveCellDisplay, setLiveCellDisplay] = useState<'list' | 'table'>('list')
+  const [liveCellOrderBy, setLiveCellOrderBy] = useState<string>(`block_timestamp.${timeOrderBy}`)
 
   const [udts, inscriptions] = udtAccounts.reduce(
     (acc, cur) => {
@@ -188,11 +212,50 @@ export const AddressOverviewCard: FC<{ address: Address }> = ({ address }) => {
     },
   ]
 
+  const appendLiveCells = () => {
+    liveCellFetcher(liveCellPage, 10, liveCellOrderBy).then(res => {
+      if (res.liveCells.length > 0) {
+        setLiveCells(liveCells.concat(res.liveCells))
+        setLiveCellPage(liveCellPage + 1)
+        setTotalLiveCell(res.total)
+      }
+    })
+  }
+
   useEffect(() => {
     if (!udts.length && !cotaList?.length && inscriptions.length) {
-      setActiveTab(AssetInfo.INSCRIPTION)
+      setActiveTab(AssetInfo.LIVE_CELL)
     }
   }, [udts.length, cotaList?.length, inscriptions.length])
+
+  useEffect(() => {
+    liveCellFetcher(1, 10, liveCellOrderBy).then(res => {
+      setLiveCells(res.liveCells)
+      setLiveCellPage(2)
+      setTotalLiveCell(res.total)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveCellOrderBy])
+
+  const onScroll = (e: React.UIEvent<HTMLElement, UIEvent>) => {
+    if (e.currentTarget.scrollHeight - e.currentTarget.scrollTop === e.currentTarget.clientHeight) {
+      appendLiveCells()
+    }
+  }
+
+  const handleTimeOrderChange = () => {
+    setTimeOrderBy(timeOrderBy === 'asc' ? 'desc' : 'asc')
+    setLiveCellOrderBy(`block_timestamp.${timeOrderBy}`)
+  }
+
+  const handleLiveCellCapacityOrderChange = () => {
+    setLiveCellCapacityOrderBy(liveCellCapacityOrderBy === 'asc' ? 'desc' : 'asc')
+    setLiveCellOrderBy(`capacity.${liveCellCapacityOrderBy}`)
+  }
+
+  const handleLiveCellDisplayChange = () => {
+    setLiveCellDisplay(liveCellDisplay === 'list' ? 'table' : 'list')
+  }
 
   return (
     <Card className={styles.addressOverviewCard}>
@@ -200,9 +263,57 @@ export const AddressOverviewCard: FC<{ address: Address }> = ({ address }) => {
 
       <CardCellsLayout type="leftSingle-right" cells={overviewItems} borderTop />
 
-      {udts.length > 0 || (cotaList?.length && cotaList.length > 0) || inscriptions.length > 0 ? (
+      {udts.length > 0 ||
+      (cotaList?.length && cotaList.length > 0) ||
+      inscriptions.length > 0 ||
+      liveCells.length > 0 ? (
         <AddressUDTAssetsPanel className={styles.addressUDTAssetsPanel}>
           <AddressAssetsTab animated={false} key={i18n.language} activeKey={activeTab.toString()}>
+            <AddressAssetsTabPane
+              tab={
+                <AddressAssetsTabPaneTitle onClick={() => setActiveTab(AssetInfo.LIVE_CELL)}>
+                  {t('address.live_cell')}
+                </AddressAssetsTabPaneTitle>
+              }
+              key={AssetInfo.LIVE_CELL}
+            >
+              <AddressUDTAssetsContent>
+                <AddressAssetsDescription>
+                  <div>UTXO: {totalLiveCell}</div>
+                  <div style={{ display: 'flex', gap: '25px' }}>
+                    <Sort>
+                      {timeOrderBy === 'asc' ? (
+                        <TimeDownIcon onClick={handleTimeOrderChange} />
+                      ) : (
+                        <TimeUpIcon onClick={handleTimeOrderChange} />
+                      )}
+                    </Sort>
+                    <Sort>
+                      <AmountSortIcon onClick={handleLiveCellCapacityOrderChange} />
+                    </Sort>
+                    <Sort>
+                      {liveCellDisplay === 'list' ? (
+                        <CellGridIcon onClick={handleLiveCellDisplayChange} />
+                      ) : (
+                        <CellTableIcon onClick={handleLiveCellDisplayChange} />
+                      )}
+                    </Sort>
+                  </div>
+                </AddressAssetsDescription>
+                <AddressUDTAssetsList onScroll={onScroll}>
+                  {liveCellDisplay === 'list' ? (
+                    liveCells.map(liveCell => (
+                      <AddressLiveCellComp
+                        account={liveCell}
+                        key={`live_cell${liveCell.amount}${liveCell.time}${liveCell.capacity}`}
+                      />
+                    ))
+                  ) : (
+                    <AddressLiveCellTableComp liveCells={liveCells} key="live_cell_table" />
+                  )}
+                </AddressUDTAssetsList>
+              </AddressUDTAssetsContent>
+            </AddressAssetsTabPane>
             {(udts.length > 0 || cotaList?.length) && (
               <AddressAssetsTabPane
                 tab={
@@ -212,36 +323,38 @@ export const AddressOverviewCard: FC<{ address: Address }> = ({ address }) => {
                 }
                 key={AssetInfo.UDT}
               >
-                <div className="addressUdtAssetsGrid">
-                  {udts.map(udt => {
-                    switch (udt.udtType) {
-                      case 'sudt':
-                        return <AddressSudtComp account={udt} key={udt.symbol + udt.udtType + udt.amount} />
+                <AddressUDTAssetsContent>
+                  <AddressUDTAssetsList>
+                    {udts.map(udt => {
+                      switch (udt.udtType) {
+                        case 'sudt':
+                          return <AddressSudtComp account={udt} key={udt.symbol + udt.udtType + udt.amount} />
 
-                      case 'spore_cell':
-                        return <AddressSporeComp account={udt} key={udt.symbol + udt.udtType + udt.amount} />
+                        case 'spore_cell':
+                          return <AddressSporeComp account={udt} key={udt.symbol + udt.udtType + udt.amount} />
 
-                      case 'm_nft_token':
-                        return <AddressMNFTComp account={udt} key={udt.symbol + udt.udtType + udt.amount} />
-                      default:
-                        return null
-                    }
-                  })}
-                  {cotaList?.map(cota => (
-                    <AddressCoTAComp
-                      account={{
-                        udtType: 'cota',
-                        symbol: cota.collection.name,
-                        udtIconFile: cota.collection.icon_url ?? '',
-                        cota: {
-                          cotaId: cota.collection.id,
-                          tokenId: Number(cota.token_id),
-                        },
-                      }}
-                      key={cota.collection.id + cota.token_id}
-                    />
-                  )) ?? null}
-                </div>
+                        case 'm_nft_token':
+                          return <AddressMNFTComp account={udt} key={udt.symbol + udt.udtType + udt.amount} />
+                        default:
+                          return null
+                      }
+                    })}
+                    {cotaList?.map(cota => (
+                      <AddressCoTAComp
+                        account={{
+                          udtType: 'cota',
+                          symbol: cota.collection.name,
+                          udtIconFile: cota.collection.icon_url ?? '',
+                          cota: {
+                            cotaId: cota.collection.id,
+                            tokenId: Number(cota.token_id),
+                          },
+                        }}
+                        key={cota.collection.id + cota.token_id}
+                      />
+                    )) ?? null}
+                  </AddressUDTAssetsList>
+                </AddressUDTAssetsContent>
               </AddressAssetsTabPane>
             )}
             {inscriptions.length > 0 && (
@@ -253,22 +366,24 @@ export const AddressOverviewCard: FC<{ address: Address }> = ({ address }) => {
                 }
                 key={AssetInfo.INSCRIPTION}
               >
-                <div className="addressUdtAssetsGrid">
-                  {inscriptions.map(inscription => {
-                    switch (inscription.udtType) {
-                      case 'omiga_inscription':
-                        return (
-                          <AddressOmigaInscriptionComp
-                            account={inscription}
-                            key={`${inscription.symbol + inscription.udtType + inscription.udtAmount}`}
-                          />
-                        )
+                <AddressUDTAssetsContent>
+                  <AddressUDTAssetsList>
+                    {inscriptions.map(inscription => {
+                      switch (inscription.udtType) {
+                        case 'omiga_inscription':
+                          return (
+                            <AddressOmigaInscriptionComp
+                              account={inscription}
+                              key={`${inscription.symbol + inscription.udtType + inscription.udtAmount}`}
+                            />
+                          )
 
-                      default:
-                        return null
-                    }
-                  })}
-                </div>
+                        default:
+                          return null
+                      }
+                    })}
+                  </AddressUDTAssetsList>
+                </AddressUDTAssetsContent>
               </AddressAssetsTabPane>
             )}
           </AddressAssetsTab>

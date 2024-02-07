@@ -1,13 +1,14 @@
 import { useTranslation } from 'react-i18next'
 import { ReactEventHandler, useEffect, useState } from 'react'
 import axios, { AxiosResponse } from 'axios'
-import { AddressUDTItemPanel } from './styled'
-import { CoTA, OmigaInscription, MNFT, NRC721, SUDT, Spore } from '../../models/Address'
+import { AddressUDTItemPanel, LiveCellTable } from './styled'
+import { CoTA, OmigaInscription, MNFT, NRC721, SUDT, Spore, LiveCell } from '../../models/Address'
 import SUDTTokenIcon from '../../assets/sudt_token.png'
-import { parseUDTAmount } from '../../utils/number'
+import { parseCKBAmount, parseUDTAmount } from '../../utils/number'
 import { parseSporeCellData } from '../../utils/spore'
 import { handleNftImgError, hexToBase64, patchMibaoImg } from '../../utils/util'
 import { sliceNftName } from '../../utils/string'
+import CKBTokenIcon from './ckb_token_icon.png'
 
 export const AddressAssetComp = ({
   href,
@@ -203,6 +204,73 @@ export const AddressOmigaInscriptionComp = ({ account }: { account: OmigaInscrip
         decimal,
       )})`}
       udtLabel={symbol!}
+    />
+  )
+}
+
+export const AddressLiveCellComp = ({ account }: { account: LiveCell }) => {
+  const { amount, capacity, time, uan, outpoint } = account
+  return (
+    <AddressAssetComp
+      icon={{
+        url: CKBTokenIcon,
+        errorHandler: handleNftImgError,
+      }}
+      name={uan ?? 'CKB Cell'}
+      property={uan ? amount : capacity}
+      udtLabel={`${outpoint.txHash.slice(0, 3)}...${outpoint.txHash.slice(63, 65)}:${outpoint.index} (${new Date(
+        parseInt(time, 10),
+      )
+        .toISOString()
+        .slice(0, 19)
+        .replace('T', ' ')})`}
+    />
+  )
+}
+
+export const AddressLiveCellTableComp = ({ liveCells }: { liveCells: LiveCell[] }) => {
+  const liveCellColumns = [
+    { align: 'center' as const, title: 'Date', dataIndex: 'date', key: 'date' },
+    { align: 'center' as const, title: 'Block #', dataIndex: 'block', key: 'block' },
+    { align: 'center' as const, title: 'OutPoint', dataIndex: 'outpoint', key: 'outpoint' },
+    { align: 'center' as const, title: 'UID', dataIndex: 'uid', key: 'uid' },
+    { align: 'center' as const, title: 'Capacity(CKB)', dataIndex: 'capacity', key: 'capacity' },
+    { align: 'center' as const, title: 'Type(i)', dataIndex: 'type', key: 'type' },
+  ]
+  return (
+    <LiveCellTable
+      scroll={{ x: 2100 }}
+      pagination={false}
+      bordered
+      columns={liveCellColumns}
+      dataSource={liveCells.map(liveCell => {
+        const cellType = () => {
+          switch (liveCell.cellType) {
+            case 'sudt':
+              return 'UDT'
+            case 'spore_cell':
+            case 'm_nft_token':
+            case 'cota':
+            case 'nrc_721_token':
+              return 'NFT'
+            case 'omiga_inscription':
+            case 'omiga_inscription_info':
+              return 'INSCRIPTION'
+            case 'normal':
+              return 'CKB'
+            default:
+              return 'UNKNOWN'
+          }
+        }
+        return {
+          date: new Date(parseInt(liveCell.time, 10)).toISOString().slice(0, 19).replace('T', ' ').replace('Z', ' '),
+          block: liveCell.block,
+          outpoint: `${liveCell.outpoint.txHash}:${liveCell.outpoint.index}`,
+          uid: liveCell.outpoint.txHash,
+          capacity: parseCKBAmount(liveCell.capacity),
+          type: cellType(),
+        }
+      })}
     />
   )
 }
