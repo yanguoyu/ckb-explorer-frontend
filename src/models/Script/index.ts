@@ -3,8 +3,3 @@ export interface Script {
   args: string
   hashType: string
 }
-
-export interface OutPoint {
-  txHash: string
-  index: string
-}

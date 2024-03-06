@@ -140,7 +140,7 @@ export const AddressOverviewCard: FC<{
 }> = ({ address, liveCellFetcher }) => {
   const { t, i18n } = useTranslation()
   const { udtAccounts = [] } = address
-  const [activeTab, setActiveTab] = useState<AssetInfo>(AssetInfo.UDT)
+  const [activeTab, setActiveTab] = useState<AssetInfo>(AssetInfo.LIVE_CELL)
   const [liveCells, setLiveCells] = useState<LiveCell[]>([])
   const [liveCellPage, setLiveCellPage] = useState(1)
   const [totalLiveCell, setTotalLiveCell] = useState(0)
@@ -221,12 +221,6 @@ export const AddressOverviewCard: FC<{
       }
     })
   }
-
-  useEffect(() => {
-    if (!udts.length && !cotaList?.length && inscriptions.length) {
-      setActiveTab(AssetInfo.LIVE_CELL)
-    }
-  }, [udts.length, cotaList?.length, inscriptions.length])
 
   useEffect(() => {
     liveCellFetcher(1, 10, liveCellOrderBy).then(res => {

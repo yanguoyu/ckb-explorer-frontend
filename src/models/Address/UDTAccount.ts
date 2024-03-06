@@ -1,4 +1,5 @@
-import { OutPoint, Script } from '../Script'
+import { Script } from '../Script'
+import { CellDep } from '../Transaction'
 
 export interface SUDT {
   symbol: string
@@ -62,7 +63,7 @@ export interface OmigaInscription {
 }
 
 export interface LiveCell {
-  outpoint: OutPoint
+  outpoint: CellDep['outPoint']
   amount: string
   capacity: string
   time: string
